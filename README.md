@@ -59,6 +59,9 @@ ANTHROPIC_API_KEY=xxxx
 OPENAI_API_KEY=xxxx  
 ARENA=random
 ```
+   ARENA supports: `random` (only models with matching API keys), `cheap` (default list),
+   `mix`, or a custom comma-separated list like
+   `ARENA=gpt-5-nano,gemini-2.5-flash,claude-haiku-4-5,openai/gpt-oss-120b`.
 5. From the root directory, start streamlit to run the app!  
 `python -m streamlit run app.py`
 

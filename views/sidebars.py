@@ -32,14 +32,18 @@ def display_latest():
 def display_sidebar():
     with st.sidebar:
         st.markdown("### Outsmart Leaderboard")
-        if os.getenv("MONGO_URI"):
+        mongo_uri = os.getenv("MONGO_URI")
+        if mongo_uri:
             try:
+                st.caption("DB status: connected")
                 st.write(f"There have been {Game.count():,} games recorded.")
                 if st.button("Calculate Rankings"):
                     display_ranks()
                     display_latest()
             except Exception as e:
+                st.caption("DB status: error")
                 st.write("Unable to calculate rankings - the database may not be available.")
                 st.write(f"Underlying error was {e}")
         else:
+            st.caption("DB status: not configured")
             st.write("LLM rankings aren't available as this app isn't connected to the database")

@@ -129,21 +129,69 @@ class Arena:
         """
         Determine the list of model names to use in a new Arena
         If there's an environment variable ARENA=random then pick 4 random model names
-        otherwise use 4 cheap models
+        that have matching API keys available.
+        Otherwise, use a configured mode or a custom comma-separated list.
         The arena should support 3 or more names, although only 4 has been tested
         :return: a list of names of LLMs for a new Arena
         """
-        arena_type = os.getenv("ARENA")
+        def has_api_key(model_name: str) -> bool:
+            if model_name.startswith("gpt-"):
+                return bool(os.getenv("OPENAI_API_KEY"))
+            if model_name.startswith("claude-"):
+                return bool(os.getenv("ANTHROPIC_API_KEY"))
+            if model_name.startswith("gemini-"):
+                return bool(os.getenv("GOOGLE_API_KEY"))
+            if model_name.startswith("grok-"):
+                return bool(os.getenv("GROK_API_KEY"))
+            if model_name.startswith("openai/"):
+                return bool(os.getenv("GROQ_API_KEY"))
+            return True
+
+        default_models = [
+            "openai/gpt-oss-120b",
+            "gpt-5-nano",
+            "gemini-2.5-flash",
+            "claude-haiku-4-5",
+        ]
+        arena_type = (os.getenv("ARENA") or "").strip()
+        if not arena_type:
+            return default_models
+        if "," in arena_type:
+            custom_models = [name.strip() for name in arena_type.split(",") if name.strip()]
+            if custom_models:
+                available = [name for name in custom_models if has_api_key(name)]
+                missing = [name for name in custom_models if name not in available]
+                if missing:
+                    logging.warning(
+                        "Skipping models without matching API keys: %s",
+                        ", ".join(missing),
+                    )
+                return available if available else custom_models
+            return default_models
         if arena_type == "random":
-            return random.sample(LLM.all_model_names(), 4)
-        else:
-            return [
-                "openai/gpt-oss-120b",
-                "gpt-5-nano",
-                # "gemini-2.5-pro",
-                "grok-4-fast",
+            available = [name for name in LLM.all_model_names() if has_api_key(name)]
+            if len(available) < 4:
+                logging.warning(
+                    "ARENA=random has only %d available models; using all.",
+                    len(available),
+                )
+                return available
+            return random.sample(available, 4)
+
+        modes = {
+            "cheap": default_models,
+            "mix": [
+                "gpt-5-mini",
+                "gemini-2.5-flash",
                 "claude-haiku-4-5",
-            ]
+                "openai/gpt-oss-120b",
+            ],
+        }
+        if arena_type in modes:
+            return modes[arena_type]
+
+        logging.warning("Unknown ARENA mode '%s'; using default models.", arena_type)
+        return default_models
 
     @classmethod
     def default(cls) -> Self:
